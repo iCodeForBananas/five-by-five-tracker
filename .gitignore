@@ -39,3 +39,8 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# store credentials
+secrets/
+*.p8
+google-service-account*.json
