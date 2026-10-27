@@ -1,7 +1,7 @@
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import { useEffect } from 'react';
 import { Modal, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { colors, fonts } from '@/theme';
 import { Check } from './Check';
@@ -37,10 +37,15 @@ function KeepAwake() {
 export function RestTimerOverlay(p: Props) {
   const { width, height } = useWindowDimensions();
   const big = Math.min(width * 0.36, height * 0.3);
+  // Insets come from the app's provider: inside an Android Modal, SafeAreaView measures the modal window and can report zero.
+  const insets = useSafeAreaInsets();
   return (
     <Modal visible={p.visible} animationType="fade" onRequestClose={p.onHide} statusBarTranslucent>
       {p.visible && <KeepAwake />}
-      <SafeAreaView style={[s.root, { backgroundColor: p.bg }]} accessibilityRole="timer" accessibilityLabel="Rest timer">
+      <View
+        style={[s.root, { backgroundColor: p.bg, paddingTop: insets.top + 20, paddingBottom: insets.bottom + 28 }]}
+        accessibilityRole="timer"
+        accessibilityLabel="Rest timer">
         <View style={s.top}>
           <Text style={s.label}>{p.label}</Text>
           <Pressable onPress={p.onHide} style={s.hide} accessibilityRole="button">
@@ -72,13 +77,13 @@ export function RestTimerOverlay(p: Props) {
             ))}
           </View>
         </View>
-      </SafeAreaView>
+      </View>
     </Modal>
   );
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 20, paddingBottom: 28 },
+  root: { flex: 1, alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16 },
   top: { width: '100%', maxWidth: 760, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 12 },
   label: { fontFamily: fonts.monoBold, fontSize: 20, letterSpacing: 2.4, color: '#FFFFFF' },
   hide: { minHeight: 56, paddingHorizontal: 22, borderRadius: 999, borderWidth: 2, borderColor: 'rgba(255,255,255,0.5)', justifyContent: 'center' },

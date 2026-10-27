@@ -41,7 +41,7 @@ function Tile({ k, w, sub, onSet }: { k: LiftKey; w: number; sub: string; onSet:
 
   return (
     <View style={s.tile}>
-      <View style={{ flexShrink: 1, minWidth: 0 }}>
+      <View style={{ flex: 1, minWidth: 0 }}>
         <View style={s.nameRow}>
           <View style={[s.dot, { backgroundColor: L.color }]} />
           <Text style={s.name}>{L.name}</Text>

@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle, Line, Path } from 'react-native-svg';
 
 import { fmtW, KEYS, LIFTS, num, shortDate, type LiftKey, type TrackerData } from '@/lib/program';
+import { useLayout } from '@/hooks/useLayout';
 import { colors, fonts } from '@/theme';
 
 const H = 320;
@@ -11,6 +12,7 @@ type Props = { data: TrackerData; onToggle: (k: LiftKey) => void };
 
 export function ProgressChart({ data, onToggle }: Props) {
   const [width, setWidth] = useState(0);
+  const { cardPad, type } = useLayout();
   const sess = data.sessions;
   const n = sess.length;
 
@@ -40,9 +42,9 @@ export function ProgressChart({ data, onToggle }: Props) {
   const hasChart = n > 0 && all.length > 0;
 
   return (
-    <View style={s.card} accessibilityLabel="Progress">
+    <View style={[s.card, { padding: cardPad }]} accessibilityLabel="Progress">
       <View>
-        <Text style={s.title}>Weight over time</Text>
+        <Text style={[s.title, { fontSize: type(28) }]}>Weight over time</Text>
         <Text style={s.sub}>
           {n ? `${n} session${n > 1 ? 's' : ''} · tap a lift to show or hide it` : 'Your lifts will chart here as you log sessions'}
         </Text>
@@ -132,8 +134,8 @@ export function ProgressChart({ data, onToggle }: Props) {
 }
 
 const s = StyleSheet.create({
-  card: { backgroundColor: colors.card, borderRadius: 16, padding: 20, gap: 20 },
-  title: { fontFamily: fonts.black, fontSize: 28, letterSpacing: -0.3, color: colors.ink },
+  card: { backgroundColor: colors.card, borderRadius: 16, gap: 20 },
+  title: { fontFamily: fonts.black, letterSpacing: -0.3, color: colors.ink },
   sub: { fontFamily: fonts.regular, fontSize: 13, color: colors.muted, marginTop: 4 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: { minHeight: 40, paddingHorizontal: 14, borderRadius: 999, borderWidth: 1.5, flexDirection: 'row', alignItems: 'center', gap: 8 },

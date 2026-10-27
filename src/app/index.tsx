@@ -1,6 +1,6 @@
 import * as Haptics from 'expo-haptics';
 import { useEffect, useRef, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { HistoryList } from '@/components/HistoryList';
@@ -9,6 +9,7 @@ import { ProgressChart } from '@/components/ProgressChart';
 import { RestTimerOverlay } from '@/components/RestTimerOverlay';
 import { WeightTiles } from '@/components/WeightTiles';
 import { WorkoutCard } from '@/components/WorkoutCard';
+import { useLayout } from '@/hooks/useLayout';
 import { useTracker } from '@/hooks/useTracker';
 import { curReps, fmtDate, fmtW, LIFTS, mmss, nextSet, other, remaining, REST, type LiftKey } from '@/lib/program';
 import { colors, fonts } from '@/theme';
@@ -17,7 +18,7 @@ export default function TrackerScreen() {
   const { data, now, loadError, actions } = useTracker();
   const [timerBig, setTimerBig] = useState(false);
   const insets = useSafeAreaInsets();
-  const wide = useWindowDimensions().width >= 900;
+  const { wide, gutter, type } = useLayout();
 
   const n = data.sessions.length;
   const left = remaining(data, now);
@@ -54,12 +55,13 @@ export default function TrackerScreen() {
     ]);
 
   return (
-    <View style={s.root}>
+    // Insets pad the outer view (not the scroll content) so nothing scrolls under the status or navigation bar.
+    <View style={[s.root, { paddingTop: insets.top, paddingBottom: insets.bottom, paddingLeft: insets.left, paddingRight: insets.right }]}>
       <ScrollView
-        contentContainerStyle={[s.content, { paddingTop: insets.top + 24, paddingBottom: insets.bottom + 48 }]}
+        contentContainerStyle={[s.content, { paddingHorizontal: gutter, paddingTop: 24, paddingBottom: 48 }]}
         keyboardShouldPersistTaps="handled">
         <View style={s.header}>
-          <Text style={s.h1}>5×5</Text>
+          <Text style={[s.h1, { fontSize: type(64), lineHeight: type(62) }]}>5×5</Text>
           <Text style={s.headerLine}>
             {n
               ? `${n} session${n > 1 ? 's' : ''} logged · last on ${fmtDate(data.sessions[n - 1].date)}`
@@ -128,13 +130,13 @@ export default function TrackerScreen() {
 
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
-  content: { paddingHorizontal: 16, gap: 24, width: '100%', maxWidth: 1120, alignSelf: 'center' },
+  content: { gap: 24, width: '100%', maxWidth: 1120, alignSelf: 'center' },
   header: { borderBottomWidth: 3, borderBottomColor: colors.ink, paddingBottom: 16, gap: 8 },
-  h1: { fontFamily: fonts.black, fontSize: 64, lineHeight: 62, letterSpacing: -1.9, color: colors.ink },
+  h1: { fontFamily: fonts.black, letterSpacing: -1.9, color: colors.ink },
   headerLine: { fontFamily: fonts.regular, fontSize: 15, color: colors.muted },
   error: { fontFamily: fonts.semibold, fontSize: 14, color: colors.accent },
   split: { gap: 24 },
   splitWide: { flexDirection: 'row', alignItems: 'flex-start' },
-  main: { flex: 2, minWidth: 0 },
-  side: { flex: 1, minWidth: 0 },
+  main: { flex: 3, minWidth: 0 },
+  side: { flex: 2, minWidth: 0 },
 });
