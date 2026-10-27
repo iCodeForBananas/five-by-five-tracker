@@ -99,6 +99,20 @@ Build profiles (`eas.json`):
 
 Version numbers use `appVersionSource: "remote"`, and `production` builds auto-increment the iOS build number and Android versionCode. Bump `expo.version` in `app.json` for each user-facing release.
 
+## Local release APK (sideloading)
+
+For a quick install on an Android phone without EAS. Needs JDK 17 and the Android SDK; Gradle downloads the NDK and CMake on first build.
+
+```bash
+npx expo prebuild --platform android
+cd android
+ANDROID_HOME="$LOCALAPPDATA/Android/Sdk" ./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a,armeabi-v7a
+# → android/app/build/outputs/apk/release/app-release.apk
+```
+
+- **Signing:** the generated project signs release builds with the template's `android/app/debug.keystore`. That's fine for sideloading but can't be uploaded to Google Play; store builds go through EAS, which manages the real upload key.
+- **Windows path limit:** native object paths exceed 260 characters when the repo is nested deeply. `plugins/withCmakeObjectPathMax.js` makes CMake hash the app's long paths, but library builds such as `react-native-worklets` can still fail. Build from a short path (for example a copy of the repo at `C:\b5`) or enable Windows long-path support.
+
 ## Submitting to the stores
 
 ### Apple App Store
