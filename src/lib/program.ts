@@ -29,6 +29,8 @@ export type Reps = Partial<Record<LiftKey, (number | null)[]>>;
 
 export type SessionEntry = { k: LiftKey; w: number; reps: number[]; ok: boolean; note: string };
 export type Session = {
+  /** Stable unique id (UUID) so sessions can be synced/deduplicated across devices. */
+  id: string;
   date: string;
   type: WorkoutType;
   entries: SessionEntry[];
@@ -151,8 +153,25 @@ export function tapSet(d: TrackerData, k: LiftKey, i: number, now: number): Trac
   return { ...d, reps, ...(nv != null ? { timerEnd: now + REST * 1000 } : null) };
 }
 
+/** Pause a running timer, or start/resume a paused one (restarting from REST if it ran out). */
+export function toggleTimer(d: TrackerData, now: number): TrackerData {
+  if (d.timerEnd) return { ...d, timerLeft: remaining(d, now), timerEnd: null };
+  const left = remaining(d, now);
+  return { ...d, timerEnd: now + (left <= 0 ? REST : left) * 1000 };
+}
+
+export function resetTimer(d: TrackerData): TrackerData {
+  return { ...d, timerEnd: null, timerLeft: REST };
+}
+
+export function addTime(d: TrackerData, now: number): TrackerData {
+  return d.timerEnd
+    ? { ...d, timerEnd: Math.max(d.timerEnd, now) + 30000 }
+    : { ...d, timerLeft: remaining(d, now) + 30 };
+}
+
 /** Log the current workout, apply progression / deload, and advance to the other workout. */
-export function finish(d: TrackerData, now: Date = new Date()): TrackerData {
+export function finish(d: TrackerData, id: string, now: Date = new Date()): TrackerData {
   const type = d.next;
   const reps = curReps(d);
   const before = clone(d.lifts);
@@ -180,7 +199,7 @@ export function finish(d: TrackerData, now: Date = new Date()): TrackerData {
   return {
     ...d,
     lifts,
-    sessions: d.sessions.concat([{ date: now.toISOString(), type, entries, before }]),
+    sessions: d.sessions.concat([{ id, date: now.toISOString(), type, entries, before }]),
     next: nxt,
     reps: emptyReps(nxt),
     timerEnd: null,
@@ -192,21 +211,4 @@ export function undo(d: TrackerData): TrackerData {
   const last = d.sessions[d.sessions.length - 1];
   if (!last) return d;
   return { ...d, lifts: last.before, next: last.type, sessions: d.sessions.slice(0, -1), reps: emptyReps(last.type) };
-}
-
-/** Validate/normalise data loaded from storage; returns null if unusable. */
-export function hydrate(raw: unknown): TrackerData | null {
-  if (!raw || typeof raw !== 'object') return null;
-  const d = raw as Partial<TrackerData>;
-  if (!d.lifts || (d.next !== 'A' && d.next !== 'B')) return null;
-  const base = fresh();
-  return {
-    ...base,
-    ...d,
-    lifts: { ...base.lifts, ...d.lifts },
-    sessions: Array.isArray(d.sessions) ? d.sessions : [],
-    hidden: d.hidden ?? {},
-    timerEnd: typeof d.timerEnd === 'number' ? d.timerEnd : null,
-    timerLeft: typeof d.timerLeft === 'number' ? d.timerLeft : REST,
-  } as TrackerData;
 }

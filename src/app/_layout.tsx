@@ -7,9 +7,12 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { createWorkoutRepository, RepositoryProvider } from '@/services';
 import { colors } from '@/theme';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
+
+const repository = createWorkoutRepository();
 
 export default function RootLayout() {
   const [loaded, error] = useFonts({
@@ -29,9 +32,11 @@ export default function RootLayout() {
   if (!loaded && !error) return null;
 
   return (
-    <SafeAreaProvider>
-      <StatusBar style="dark" />
-      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg } }} />
-    </SafeAreaProvider>
+    <RepositoryProvider repository={repository}>
+      <SafeAreaProvider>
+        <StatusBar style="dark" />
+        <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg } }} />
+      </SafeAreaProvider>
+    </RepositoryProvider>
   );
 }

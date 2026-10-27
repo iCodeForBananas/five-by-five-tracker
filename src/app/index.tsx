@@ -10,26 +10,11 @@ import { RestTimerOverlay } from '@/components/RestTimerOverlay';
 import { WeightTiles } from '@/components/WeightTiles';
 import { WorkoutCard } from '@/components/WorkoutCard';
 import { useTracker } from '@/hooks/useTracker';
-import {
-  curReps,
-  finish,
-  fmtDate,
-  fmtW,
-  fresh,
-  LIFTS,
-  mmss,
-  nextSet,
-  other,
-  remaining,
-  REST,
-  tapSet,
-  undo,
-  type LiftKey,
-} from '@/lib/program';
+import { curReps, fmtDate, fmtW, LIFTS, mmss, nextSet, other, remaining, REST, type LiftKey } from '@/lib/program';
 import { colors, fonts } from '@/theme';
 
 export default function TrackerScreen() {
-  const { data, now, commit } = useTracker();
+  const { data, now, loadError, actions } = useTracker();
   const [timerBig, setTimerBig] = useState(false);
   const insets = useSafeAreaInsets();
   const wide = useWindowDimensions().width >= 900;
@@ -49,35 +34,23 @@ export default function TrackerScreen() {
   }, [ready]);
 
   const toggleTimer = () => {
-    if (data.timerEnd) {
-      commit((d, t) => ({ ...d, timerLeft: remaining(d, t), timerEnd: null }));
-      return;
-    }
-    setTimerBig(true);
-    commit((d, t) => {
-      let l = remaining(d, t);
-      if (l <= 0) l = REST;
-      return { ...d, timerEnd: t + l * 1000 };
-    });
+    if (!data.timerEnd) setTimerBig(true);
+    actions.toggleTimer();
   };
   const resetTimer = () => {
     setTimerBig(false);
-    commit((d) => ({ ...d, timerEnd: null, timerLeft: REST }));
+    actions.resetTimer();
   };
-  const addTime = () =>
-    commit((d, t) =>
-      d.timerEnd ? { ...d, timerEnd: Math.max(d.timerEnd, t) + 30000 } : { ...d, timerLeft: remaining(d, t) + 30 },
-    );
   const onTapSet = (k: LiftKey, i: number) => {
     const checking = reps[k][i] == null;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-    commit((d, t) => tapSet(d, k, i, t));
+    actions.tapSet(k, i);
     if (checking) setTimerBig(true);
   };
   const confirmReset = () =>
     Alert.alert('Reset all data?', 'This erases every logged session and resets all weights. It cannot be undone.', [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Erase everything', style: 'destructive', onPress: () => commit(() => fresh()) },
+      { text: 'Erase everything', style: 'destructive', onPress: actions.reset },
     ]);
 
   return (
@@ -92,6 +65,11 @@ export default function TrackerScreen() {
               ? `${n} session${n > 1 ? 's' : ''} logged · last on ${fmtDate(data.sessions[n - 1].date)}`
               : 'No sessions yet. Start with Workout A.'}
           </Text>
+          {loadError && (
+            <Text style={s.error}>
+              {`Couldn't load your saved data, so changes won't be saved. ${loadError.message}`}
+            </Text>
+          )}
         </View>
 
         <View style={[s.split, wide && s.splitWide]}>
@@ -109,23 +87,20 @@ export default function TrackerScreen() {
               onTapSet={onTapSet}
               onTimerPress={() => (data.timerEnd ? setTimerBig(true) : toggleTimer())}
               onTimerReset={resetTimer}
-              onFinish={() => commit((d) => finish(d))}
-              onSwitch={() => commit((d) => ({ ...d, next: other(d.next), reps: {} }))}
+              onFinish={actions.finish}
+              onSwitch={actions.switchWorkout}
             />
           </View>
           <View style={wide ? s.side : undefined}>
-            <WeightTiles
-              data={data}
-              onSetWeight={(k, w) => commit((d) => ({ ...d, lifts: { ...d.lifts, [k]: { ...d.lifts[k], w } } }))}
-            />
+            <WeightTiles data={data} onSetWeight={actions.setWeight} />
           </View>
         </View>
 
-        <ProgressChart data={data} onToggle={(k) => commit((d) => ({ ...d, hidden: { ...d.hidden, [k]: !d.hidden[k] } }))} />
+        <ProgressChart data={data} onToggle={actions.toggleLift} />
 
         <View style={[s.split, wide && s.splitWide]}>
           <View style={wide ? s.main : undefined}>
-            <HistoryList sessions={data.sessions} onUndo={() => commit(undo)} />
+            <HistoryList sessions={data.sessions} onUndo={actions.undo} />
           </View>
           <View style={wide ? s.side : undefined}>
             <ProgramRules onReset={confirmReset} />
@@ -144,7 +119,7 @@ export default function TrackerScreen() {
         onHide={() => setTimerBig(false)}
         onSetDone={() => ns && onTapSet(ns.k, ns.i)}
         onToggle={toggleTimer}
-        onAddTime={addTime}
+        onAddTime={actions.addTime}
         onReset={resetTimer}
       />
     </View>
@@ -157,6 +132,7 @@ const s = StyleSheet.create({
   header: { borderBottomWidth: 3, borderBottomColor: colors.ink, paddingBottom: 16, gap: 8 },
   h1: { fontFamily: fonts.black, fontSize: 64, lineHeight: 62, letterSpacing: -1.9, color: colors.ink },
   headerLine: { fontFamily: fonts.regular, fontSize: 15, color: colors.muted },
+  error: { fontFamily: fonts.semibold, fontSize: 14, color: colors.accent },
   split: { gap: 24 },
   splitWide: { flexDirection: 'row', alignItems: 'flex-start' },
   main: { flex: 2, minWidth: 0 },

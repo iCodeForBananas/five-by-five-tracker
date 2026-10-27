@@ -9,19 +9,52 @@ A no-nonsense tracker for the classic 5×5 strength program, built with Expo (Re
 - **Progress chart**: per-lift lines with solid dots (all reps hit) and hollow dots (missed reps). Tap a chip to show or hide a lift.
 - **History** with undo of the last session, plus a reset-all option.
 
-All data stays on the device (AsyncStorage, key `five-by-five-tracker-v1`). There are no accounts, no network calls, and no runtime permissions.
+All data stays on the device (AsyncStorage). There are no accounts, no network calls, and no runtime permissions.
 
 ## Project layout
 
 ```
 src/
-  app/            expo-router routes (_layout.tsx = fonts/splash, index.tsx = tracker screen)
+  app/            expo-router routes (_layout.tsx = fonts/splash/repository provider, index.tsx = tracker screen)
   components/     WorkoutCard, RestTimerOverlay, WeightTiles, ProgressChart, HistoryList, ProgramRules
-  hooks/          useTracker: persisted state + timer clock
-  lib/program.ts  program rules and pure state transitions (finish, undo, tapSet, …)
+  hooks/          useTracker: app state + intent-level actions (finish, undo, tapSet, …) + timer clock
+  lib/program.ts  program rules and pure state transitions, with no storage or React code
+  services/       persistence layer (see below)
   theme.ts        colors and font families
 assets/           app icon, Android adaptive icon layers, splash, favicon
 ```
+
+## Data and persistence
+
+The UI never touches storage. Screens call `useTracker()` actions; each action applies a pure transition from `lib/program.ts`, then persists only the parts that changed through the **`WorkoutRepository`** interface (`src/services/WorkoutRepository.ts`):
+
+| Method | Called when |
+|---|---|
+| `load()` | app start (runs schema migrations) |
+| `saveProgram({ lifts, next })` | weight edited, workout switched |
+| `saveDraft(reps)` | a set is checked or unchecked |
+| `savePreferences({ hidden })` | a chart line is toggled |
+| `saveTimer({ timerEnd, timerLeft })` | the rest timer starts, pauses, resets, or gets +30s |
+| `recordSession(session, program)` | a workout is finished (one atomic write) |
+| `removeSession(id, program)` | "Undo last session" |
+| `clear()` | "Reset all data" |
+
+The current implementation, `AsyncStorageWorkoutRepository`, stores one JSON document under the key `five-by-five-tracker`. It's versioned by `src/services/schema.ts`:
+
+- `schemaVersion` (currently **2**) and `updatedAt` on every write.
+- Sessions carry a UUID `id` (from `expo-crypto`) so they can be deduplicated when syncing.
+- `migrate()` upgrades older documents step by step. v1 is the original flat format under `five-by-five-tracker-v1`, which is moved to the new key on first load. To change the stored shape, bump `SCHEMA_VERSION` and add a `MIGRATIONS[n]` step.
+- If the stored data has a *newer* schema than the app understands (a downgraded build), loading fails with a visible message and nothing is written, so newer data is never clobbered.
+
+### Future: syncing to a backend
+
+To move to Supabase or any other backend:
+
+1. Write a class that implements `WorkoutRepository`, e.g. `SupabaseWorkoutRepository`. Sessions map to rows keyed by `id`; `program`, `preferences`, and `draft` map to per-user rows. The timer can stay device-local.
+2. Return it from `createWorkoutRepository()` in `src/services/index.ts`. That one line is the only change outside `src/services/`.
+3. For offline-first sync, wrap both, for example a `SyncingWorkoutRepository` that writes locally first and pushes to the remote in the background, using `updatedAt` and session `id`s to reconcile.
+
+No backend SDKs, keys, or environment variables are set up yet.
 
 ## Setup
 
