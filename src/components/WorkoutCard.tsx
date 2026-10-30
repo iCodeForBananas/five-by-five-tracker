@@ -85,7 +85,7 @@ export function WorkoutCard({ data, reps, other, rest, onTapSet, onTimerPress, o
           <Text style={s.finishText}>Finish Workout {data.next}</Text>
         </Pressable>
         <Text style={s.help}>
-          Tap a set to check it off and restart the rest timer. Tap again to uncheck. Unchecked sets count as missed.
+          Tap a set to check it off; tap again to uncheck. Start the rest timer whenever you want it. Unchecked sets count as missed.
         </Text>
         <Pressable onPress={onSwitch} style={s.switch} accessibilityRole="button">
           <Text style={s.switchText}>Do Workout {other} instead</Text>

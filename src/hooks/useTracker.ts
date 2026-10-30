@@ -65,8 +65,8 @@ export function useTracker() {
     return {
       tapSet: (k: P.LiftKey, i: number) =>
         apply(
-          (d, t) => P.tapSet(d, k, i, t),
-          (r, n, p) => [r.saveDraft(n.reps), ...(n.timerEnd !== p.timerEnd ? [r.saveTimer(timer(n))] : [])],
+          (d) => P.tapSet(d, k, i),
+          (r, n) => [r.saveDraft(n.reps)],
         ),
       finish: () =>
         apply(

@@ -42,11 +42,10 @@ export default function TrackerScreen() {
     setTimerBig(false);
     actions.resetTimer();
   };
+  // Only toggles the set; the rest timer is started from its Start button.
   const onTapSet = (k: LiftKey, i: number) => {
-    const checking = reps[k][i] == null;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     actions.tapSet(k, i);
-    if (checking) setTimerBig(true);
   };
   const confirmReset = () =>
     Alert.alert('Reset all data?', 'This erases every logged session and resets all weights. It cannot be undone.', [

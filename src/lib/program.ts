@@ -145,12 +145,11 @@ export function remaining(d: TrackerData, now: number): number {
   return typeof d.timerLeft === 'number' ? d.timerLeft : REST;
 }
 
-/** Toggle a set; checking one off also (re)starts the rest timer. */
-export function tapSet(d: TrackerData, k: LiftKey, i: number, now: number): TrackerData {
+/** Toggle a set checked/unchecked. Never touches the rest timer; that's started manually. */
+export function tapSet(d: TrackerData, k: LiftKey, i: number): TrackerData {
   const reps = clone(curReps(d));
-  const nv = reps[k][i] == null ? 5 : null;
-  reps[k][i] = nv;
-  return { ...d, reps, ...(nv != null ? { timerEnd: now + REST * 1000 } : null) };
+  reps[k][i] = reps[k][i] == null ? 5 : null;
+  return { ...d, reps };
 }
 
 /** Pause a running timer, or start/resume a paused one (restarting from REST if it ran out). */

@@ -3,7 +3,7 @@
 A no-nonsense tracker for the classic 5×5 strength program, built with Expo (React Native + TypeScript) for iOS and Android.
 
 - **Workouts A / B**: A = Squat, Bench, Row (5×5). B = Squat, Overhead Press (5×5), Deadlift (1×5). They alternate automatically.
-- **Tap-to-log sets**: checking off a set starts a 2:00 rest timer, which opens full screen with Set done, Pause, +30s, and Reset. The screen stays awake while it's open.
+- **Tap-to-log sets**: tapping a set just checks it off (tap again to uncheck). The 2:00 rest timer is manual: press Start on the timer card to open it full screen with Set done, Pause, +30s, and Reset. The screen stays awake while it's open.
 - **Automatic progression**: hit every rep and the weight goes up 5 lb (10 lb on deadlift). Miss and you repeat the weight. Three misses in a row deloads 10%.
 - **Working weights**: edit them inline (±5 lb or type a value), with a plate breakdown per side for a 45 lb bar.
 - **Progress chart**: per-lift lines with solid dots (all reps hit) and hollow dots (missed reps). Tap a chip to show or hide a lift.
