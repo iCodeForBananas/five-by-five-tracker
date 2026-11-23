@@ -32,13 +32,15 @@ export type Session = {
   /** Stable unique id (UUID) so sessions can be synced/deduplicated across devices. */
   id: string;
   date: string;
-  type: WorkoutType;
+  /** Only on sessions logged when the app enforced Workout A/B; newer sessions log any mix of lifts. */
+  type?: WorkoutType;
   entries: SessionEntry[];
   before: Record<LiftKey, LiftState>;
 };
 
 export type TrackerData = {
   lifts: Record<LiftKey, LiftState>;
+  /** Legacy A/B pointer. Still stored for compatibility; the UI no longer uses it. */
   next: WorkoutType;
   sessions: Session[];
   reps: Reps;
@@ -49,11 +51,9 @@ export type TrackerData = {
   timerLeft: number;
 };
 
-export const other = (t: WorkoutType): WorkoutType => (t === 'A' ? 'B' : 'A');
-
-export function emptyReps(type: WorkoutType): Reps {
+export function emptyReps(): Reps {
   const r: Reps = {};
-  PROGRAM[type].forEach((k) => {
+  KEYS.forEach((k) => {
     r[k] = Array.from({ length: LIFTS[k].sets }, () => null);
   });
   return r;
@@ -70,7 +70,7 @@ export function fresh(): TrackerData {
     },
     next: 'A',
     sessions: [],
-    reps: emptyReps('A'),
+    reps: emptyReps(),
     hidden: {},
     timerEnd: null,
     timerLeft: REST,
@@ -124,18 +124,26 @@ export function mmss(sec: number): string {
   return m + ':' + (s < 10 ? '0' : '') + s;
 }
 
-/** The in-progress reps for the next workout, rebuilt if stored reps don't match its lifts. */
+/** In-progress reps for every lift. Lifts missing from the stored draft (e.g. an old A/B draft) start empty. */
 export function curReps(d: TrackerData): Record<LiftKey, (number | null)[]> {
-  const ks = PROGRAM[d.next];
-  const ok = d.reps && ks.every((k) => Array.isArray(d.reps[k]));
-  return (ok ? d.reps : emptyReps(d.next)) as Record<LiftKey, (number | null)[]>;
+  const out = {} as Record<LiftKey, (number | null)[]>;
+  for (const k of KEYS) {
+    const r = d.reps?.[k];
+    out[k] = Array.isArray(r) && r.length === LIFTS[k].sets ? r : Array.from({ length: LIFTS[k].sets }, () => null);
+  }
+  return out;
 }
 
-export function nextSet(d: TrackerData): { k: LiftKey; i: number } | null {
-  const reps = curReps(d);
-  for (const k of PROGRAM[d.next]) {
-    const i = reps[k].findIndex((v) => v == null);
-    if (i >= 0) return { k, i };
+/** Sets counted so far for a lift in the current workout. */
+export function setCount(reps: (number | null)[]): number {
+  return reps.filter((v) => v != null).length;
+}
+
+/** The most recent logged entry for a lift, with the date of its session. */
+export function lastDone(d: TrackerData, k: LiftKey): (SessionEntry & { date: string }) | null {
+  for (let i = d.sessions.length - 1; i >= 0; i--) {
+    const e = d.sessions[i].entries.find((x) => x.k === k);
+    if (e) return { ...e, date: d.sessions[i].date };
   }
   return null;
 }
@@ -145,10 +153,11 @@ export function remaining(d: TrackerData, now: number): number {
   return typeof d.timerLeft === 'number' ? d.timerLeft : REST;
 }
 
-/** Toggle a set checked/unchecked. Never touches the rest timer; that's started manually. */
-export function tapSet(d: TrackerData, k: LiftKey, i: number): TrackerData {
+/** Count one more set done for a lift (+1), or take one back (-1). Clamped to 0..sets. */
+export function countSet(d: TrackerData, k: LiftKey, delta: 1 | -1): TrackerData {
   const reps = clone(curReps(d));
-  reps[k][i] = reps[k][i] == null ? 5 : null;
+  const n = Math.min(LIFTS[k].sets, Math.max(0, setCount(reps[k]) + delta));
+  reps[k] = reps[k].map((_, i) => (i < n ? 5 : null));
   return { ...d, reps };
 }
 
@@ -163,19 +172,17 @@ export function resetTimer(d: TrackerData): TrackerData {
   return { ...d, timerEnd: null, timerLeft: REST };
 }
 
-export function addTime(d: TrackerData, now: number): TrackerData {
-  return d.timerEnd
-    ? { ...d, timerEnd: Math.max(d.timerEnd, now) + 30000 }
-    : { ...d, timerLeft: remaining(d, now) + 30 };
-}
-
-/** Log the current workout, apply progression / deload, and advance to the other workout. */
+/**
+ * Log whichever lifts have at least one set counted and apply progression / deload to those.
+ * Lifts you didn't touch are left alone. No-op when nothing was counted.
+ */
 export function finish(d: TrackerData, id: string, now: Date = new Date()): TrackerData {
-  const type = d.next;
   const reps = curReps(d);
+  const done = KEYS.filter((k) => setCount(reps[k]) > 0);
+  if (!done.length) return d;
   const before = clone(d.lifts);
   const lifts = clone(d.lifts);
-  const entries: SessionEntry[] = PROGRAM[type].map((k) => {
+  const entries: SessionEntry[] = done.map((k) => {
     const r = reps[k].map((v) => (v == null ? 0 : v));
     const ok = r.every((v) => v >= 5);
     const w = num(lifts[k].w);
@@ -194,13 +201,11 @@ export function finish(d: TrackerData, id: string, now: Date = new Date()): Trac
     }
     return { k, w, reps: r, ok, note };
   });
-  const nxt = other(type);
   return {
     ...d,
     lifts,
-    sessions: d.sessions.concat([{ id, date: now.toISOString(), type, entries, before }]),
-    next: nxt,
-    reps: emptyReps(nxt),
+    sessions: d.sessions.concat([{ id, date: now.toISOString(), entries, before }]),
+    reps: emptyReps(),
     timerEnd: null,
     timerLeft: REST,
   };
@@ -209,5 +214,5 @@ export function finish(d: TrackerData, id: string, now: Date = new Date()): Trac
 export function undo(d: TrackerData): TrackerData {
   const last = d.sessions[d.sessions.length - 1];
   if (!last) return d;
-  return { ...d, lifts: last.before, next: last.type, sessions: d.sessions.slice(0, -1), reps: emptyReps(last.type) };
+  return { ...d, lifts: last.before, sessions: d.sessions.slice(0, -1), reps: emptyReps() };
 }

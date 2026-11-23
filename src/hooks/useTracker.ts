@@ -63,26 +63,22 @@ export function useTracker() {
     };
 
     return {
-      tapSet: (k: P.LiftKey, i: number) =>
+      countSet: (k: P.LiftKey, delta: 1 | -1) =>
         apply(
-          (d) => P.tapSet(d, k, i),
+          (d) => P.countSet(d, k, delta),
           (r, n) => [r.saveDraft(n.reps)],
         ),
       finish: () =>
         apply(
           (d) => P.finish(d, randomUUID()),
-          (r, n) => [r.recordSession(n.sessions[n.sessions.length - 1], program(n)), r.saveDraft(n.reps), r.saveTimer(timer(n))],
+          (r, n, p) =>
+            n === p ? [] : [r.recordSession(n.sessions[n.sessions.length - 1], program(n)), r.saveDraft(n.reps), r.saveTimer(timer(n))],
         ),
       undo: () =>
         apply(P.undo, (r, n, p) => {
           const last = p.sessions[p.sessions.length - 1];
           return last ? [r.removeSession(last.id, program(n)), r.saveDraft(n.reps)] : [];
         }),
-      switchWorkout: () =>
-        apply(
-          (d) => ({ ...d, next: P.other(d.next), reps: P.emptyReps(P.other(d.next)) }),
-          (r, n) => [r.saveProgram(program(n)), r.saveDraft(n.reps)],
-        ),
       setWeight: (k: P.LiftKey, w: number) =>
         apply(
           (d) => ({ ...d, lifts: { ...d.lifts, [k]: { ...d.lifts[k], w } } }),
@@ -95,7 +91,6 @@ export function useTracker() {
         ),
       toggleTimer: () => apply(P.toggleTimer, (r, n) => [r.saveTimer(timer(n))]),
       resetTimer: () => apply(P.resetTimer, (r, n) => [r.saveTimer(timer(n))]),
-      addTime: () => apply(P.addTime, (r, n) => [r.saveTimer(timer(n))]),
       reset: () => apply(() => P.fresh(), (r) => [r.clear()]),
     };
   }, [repo]);

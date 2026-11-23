@@ -1,95 +1,86 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { fmtW, LIFTS, plates, PROGRAM, type LiftKey, type TrackerData, type WorkoutType } from '@/lib/program';
+import { fmtDate, fmtW, KEYS, LIFTS, lastDone, plates, setCount, type LiftKey, type TrackerData } from '@/lib/program';
 import { useLayout } from '@/hooks/useLayout';
 import { colors, fonts } from '@/theme';
-import { Check, ResetIcon } from './Check';
+import { Check } from './Check';
 
 type Props = {
   data: TrackerData;
   reps: Record<LiftKey, (number | null)[]>;
-  other: WorkoutType;
-  rest: { bg: string; label: string; time: string; action: string };
-  onTapSet: (k: LiftKey, i: number) => void;
-  onTimerPress: () => void;
-  onTimerReset: () => void;
+  onCount: (k: LiftKey, delta: 1 | -1) => void;
   onFinish: () => void;
-  onSwitch: () => void;
 };
 
-export function WorkoutCard({ data, reps, other, rest, onTapSet, onTimerPress, onTimerReset, onFinish, onSwitch }: Props) {
-  const ks = PROGRAM[data.next];
-  const anyLogged = ks.some((k) => reps[k].some((v) => v != null));
-  const { compact, cardPad, type } = useLayout();
+/** Every lift, what you did last time, and a tap counter for today's sets. Do any lifts in any order. */
+export function WorkoutCard({ data, reps, onCount, onFinish }: Props) {
+  const { cardPad, type } = useLayout();
+  const touched = KEYS.filter((k) => setCount(reps[k]) > 0).length;
   return (
-    <View style={[s.card, { padding: cardPad }]} accessibilityLabel="Next workout">
-      <View style={compact ? s.headStacked : s.head}>
-        <View>
-          <Text style={s.eyebrow}>UP NEXT</Text>
-          <Text style={[s.title, { fontSize: type(40) }]}>Workout {data.next}</Text>
-          <Text style={s.sub}>{ks.map((k) => LIFTS[k].name).join(', ')}</Text>
-        </View>
-        <View style={[s.timer, { backgroundColor: rest.bg }]} accessibilityRole="timer" accessibilityLabel="Rest timer">
-          <View style={compact ? s.timerTextGrow : s.timerText}>
-            <Text style={s.timerLabel}>{rest.label}</Text>
-            <Text style={s.timerTime}>{rest.time}</Text>
-          </View>
-          <Pressable onPress={onTimerPress} style={s.timerBtn} accessibilityRole="button">
-            <Text style={s.timerBtnText}>{rest.action}</Text>
-          </Pressable>
-          <Pressable onPress={onTimerReset} style={s.timerReset} accessibilityRole="button" accessibilityLabel="Reset timer to 2:00">
-            <ResetIcon color="#FFFFFF" />
-          </Pressable>
-        </View>
+    <View style={[s.card, { padding: cardPad }]} accessibilityLabel="Today's workout">
+      <View>
+        <Text style={s.eyebrow}>TODAY</Text>
+        <Text style={[s.title, { fontSize: type(36) }]}>Lifts</Text>
+        <Text style={s.sub}>Tap a lift each time you finish a set.</Text>
       </View>
 
-      {ks.map((k) => {
+      {KEYS.map((k) => {
         const L = LIFTS[k];
         const w = data.lifts[k].w;
         const f = data.lifts[k].fails || 0;
+        const last = lastDone(data, k);
+        const n = setCount(reps[k]);
+        const full = n >= L.sets;
         return (
-          <View key={k} style={compact ? s.exStacked : s.ex}>
+          <View key={k} style={s.ex}>
             <View style={s.exInfo}>
               <View style={s.nameRow}>
                 <View style={[s.dot, { backgroundColor: L.color }]} />
                 <Text style={s.exName}>{L.name}</Text>
               </View>
-              <Text style={[s.weight, { fontSize: type(28) }]}>
+              <Text style={[s.weight, { fontSize: type(26) }]}>
                 {fmtW(w)} <Text style={s.scheme}>lb · {L.sets}×5</Text>
+              </Text>
+              <Text style={s.last}>
+                {last
+                  ? `Last: ${fmtW(last.w)} lb · ${last.reps.join('/')} · ${fmtDate(last.date)}`
+                  : 'Last: not done yet'}
               </Text>
               <Text style={s.small}>{plates(w)}</Text>
               {f > 0 && <Text style={s.fail}>Missed {f} of 3 in a row at this weight</Text>}
             </View>
-            <View style={compact ? s.setsFill : s.sets}>
-              {reps[k].map((v, i) => {
-                const done = v != null && v >= 5;
-                return (
-                  <Pressable
-                    key={i}
-                    onPress={() => onTapSet(k, i)}
-                    accessibilityRole="checkbox"
-                    accessibilityState={{ checked: done }}
-                    accessibilityLabel={`${L.name} set ${i + 1}`}
-                    style={[s.set, compact ? s.setFill : s.setFixed, done ? s.setDone : null]}>
-                    {done && <Check color="#FFFFFF" />}
-                  </Pressable>
-                );
-              })}
+            <View style={s.counter}>
+              {n > 0 && (
+                <Pressable onPress={() => onCount(k, -1)} style={s.minus} accessibilityRole="button" accessibilityLabel={`Take back a ${L.name} set`}>
+                  <Text style={s.minusText}>−</Text>
+                </Pressable>
+              )}
+              <Pressable
+                onPress={() => onCount(k, 1)}
+                style={[s.tap, full && s.tapFull]}
+                accessibilityRole="button"
+                accessibilityLabel={`${L.name}: ${n} of ${L.sets} sets. Tap to count a set.`}>
+                {full ? (
+                  <Check size={30} color="#FFFFFF" />
+                ) : (
+                  <Text style={s.tapCount}>
+                    {n}
+                    <Text style={s.tapOf}>/{L.sets}</Text>
+                  </Text>
+                )}
+              </Pressable>
             </View>
           </View>
         );
       })}
 
       <View style={s.foot}>
-        <Pressable onPress={onFinish} disabled={!anyLogged} style={[s.finish, !anyLogged && { opacity: 0.4 }]} accessibilityRole="button">
-          <Text style={s.finishText}>Finish Workout {data.next}</Text>
+        <Pressable onPress={onFinish} disabled={!touched} style={[s.finish, !touched && { opacity: 0.4 }]} accessibilityRole="button">
+          <Text style={s.finishText}>{touched ? `Finish · log ${touched} lift${touched > 1 ? 's' : ''}` : 'Finish workout'}</Text>
         </Pressable>
         <Text style={s.help}>
-          Tap a set to check it off; tap again to uncheck. Start the rest timer whenever you want it. Unchecked sets count as missed.
+          Only lifts with at least one set are logged. All sets done and the weight goes up next time; fewer counts as a miss.
         </Text>
-        <Pressable onPress={onSwitch} style={s.switch} accessibilityRole="button">
-          <Text style={s.switchText}>Do Workout {other} instead</Text>
-        </Pressable>
       </View>
     </View>
   );
@@ -97,44 +88,28 @@ export function WorkoutCard({ data, reps, other, rest, onTapSet, onTimerPress, o
 
 const s = StyleSheet.create({
   card: { backgroundColor: colors.card, borderRadius: 16, gap: 20 },
-  head: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16 },
-  // Phones: heading above a full-width timer bar.
-  headStacked: { gap: 16 },
   eyebrow: { fontFamily: fonts.monoBold, fontSize: 12, letterSpacing: 1.4, color: colors.accent },
   title: { fontFamily: fonts.black, letterSpacing: -0.8, color: colors.ink, marginTop: 4 },
   sub: { fontFamily: fonts.regular, fontSize: 14, color: colors.muted, marginTop: 4 },
-  timer: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10, paddingRight: 10, paddingLeft: 16, borderRadius: 12 },
-  timerText: { minWidth: 96 },
-  timerTextGrow: { flex: 1, minWidth: 0 },
-  timerLabel: { fontFamily: fonts.monoBold, fontSize: 11, letterSpacing: 1.1, color: '#FFFFFF' },
-  timerTime: { fontFamily: fonts.monoBold, fontSize: 32, lineHeight: 36, color: '#FFFFFF', fontVariant: ['tabular-nums'] },
-  timerBtn: { minWidth: 76, height: 44, paddingHorizontal: 14, borderRadius: 999, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' },
-  timerBtnText: { fontFamily: fonts.bold, fontSize: 14, color: colors.ink },
-  timerReset: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' },
-  // Wider screens: lift details beside a fixed-width row of set circles.
-  ex: { flexDirection: 'row', alignItems: 'center', gap: 16, paddingTop: 20, borderTopWidth: 1, borderTopColor: colors.line },
-  // Phones: lift details above a full-width row of set circles. Explicit rather than flexWrap,
-  // which Yoga on Android resolves by shrinking the text column instead of wrapping.
-  exStacked: { gap: 12, paddingTop: 20, borderTopWidth: 1, borderTopColor: colors.line },
+  ex: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingTop: 20, borderTopWidth: 1, borderTopColor: colors.line },
   exInfo: { flex: 1, minWidth: 0 },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   dot: { width: 10, height: 10, borderRadius: 5 },
   exName: { fontFamily: fonts.bold, fontSize: 20, color: colors.ink },
   weight: { fontFamily: fonts.monoBold, color: colors.ink, marginTop: 6 },
   scheme: { fontFamily: fonts.mono, fontSize: 14, color: colors.muted },
+  last: { fontFamily: fonts.semibold, fontSize: 14, color: colors.ink, marginTop: 4 },
   small: { fontFamily: fonts.regular, fontSize: 13, color: colors.muted, marginTop: 2 },
   fail: { fontFamily: fonts.semibold, fontSize: 13, color: colors.accent, marginTop: 4 },
-  sets: { flexDirection: 'row', gap: 8, flexShrink: 0 },
-  setsFill: { flexDirection: 'row', gap: 10 },
-  set: { borderRadius: 999, borderWidth: 2, borderColor: colors.lineStrong, alignItems: 'center', justifyContent: 'center' },
-  setFixed: { width: 52, height: 52 },
-  // Five equal circles sharing the card width, capped so they don't balloon on large phones.
-  setFill: { flex: 1, aspectRatio: 1, maxWidth: 64 },
-  setDone: { backgroundColor: colors.ink, borderColor: colors.ink },
+  counter: { flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 0 },
+  minus: { width: 44, height: 44, borderRadius: 22, borderWidth: 1.5, borderColor: colors.lineStrong, alignItems: 'center', justifyContent: 'center' },
+  minusText: { fontFamily: fonts.bold, fontSize: 22, color: colors.ink, lineHeight: 26 },
+  tap: { width: 76, height: 76, borderRadius: 38, borderWidth: 2.5, borderColor: colors.ink, alignItems: 'center', justifyContent: 'center' },
+  tapFull: { backgroundColor: colors.go, borderColor: colors.go },
+  tapCount: { fontFamily: fonts.monoBold, fontSize: 28, color: colors.ink, fontVariant: ['tabular-nums'] },
+  tapOf: { fontFamily: fonts.mono, fontSize: 15, color: colors.muted },
   foot: { gap: 12, paddingTop: 20, borderTopWidth: 1, borderTopColor: colors.line },
   finish: { minHeight: 52, paddingHorizontal: 28, borderRadius: 999, backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center' },
   finishText: { fontFamily: fonts.bold, fontSize: 16, color: '#FFFFFF' },
   help: { fontFamily: fonts.regular, fontSize: 13, lineHeight: 18, color: colors.muted },
-  switch: { minHeight: 44, justifyContent: 'center', alignSelf: 'flex-start' },
-  switchText: { fontFamily: fonts.regular, fontSize: 14, color: colors.ink, textDecorationLine: 'underline' },
 });

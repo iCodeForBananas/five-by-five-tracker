@@ -12,7 +12,7 @@ export function ProgramRules({ onReset }: { onReset: () => void }) {
       <Text style={s.body}>
         <Text style={s.bold}>B:</Text> Squat 5×5, Overhead Press 5×5, Deadlift 1×5
       </Text>
-      <Text style={[s.body, s.soft]}>Alternate A and B, three days a week with a rest day between.</Text>
+      <Text style={[s.body, s.soft]}>Classic plan: alternate A and B, three days a week. The tracker doesn&apos;t enforce it, so log whichever lifts you do.</Text>
       <Text style={[s.body, s.soft]}>
         Hit every rep and the weight goes up 5 lb next time (10 lb on deadlift). Miss and you repeat it. Miss three sessions
         in a row and it drops 10%.

@@ -24,7 +24,7 @@ export function HistoryList({ sessions, onUndo }: Props) {
         <View key={ss.id} style={compact ? s.rowStacked : s.row}>
           <View style={compact ? s.when : s.whenFixed}>
             <Text style={s.date}>{fmtDate(ss.date)}</Text>
-            <Text style={s.muted}>Workout {ss.type}</Text>
+            <Text style={s.muted}>{ss.type ? `Workout ${ss.type}` : `${ss.entries.length} lift${ss.entries.length > 1 ? 's' : ''}`}</Text>
           </View>
           <View style={s.entries}>
             {ss.entries.map((e) => (

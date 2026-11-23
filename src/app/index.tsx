@@ -1,31 +1,29 @@
 import * as Haptics from 'expo-haptics';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { HistoryList } from '@/components/HistoryList';
 import { ProgramRules } from '@/components/ProgramRules';
 import { ProgressChart } from '@/components/ProgressChart';
-import { RestTimerOverlay } from '@/components/RestTimerOverlay';
+import { RestTimerBar } from '@/components/RestTimerBar';
 import { WeightTiles } from '@/components/WeightTiles';
 import { WorkoutCard } from '@/components/WorkoutCard';
 import { useLayout } from '@/hooks/useLayout';
 import { useTracker } from '@/hooks/useTracker';
-import { curReps, fmtDate, fmtW, LIFTS, mmss, nextSet, other, remaining, REST, type LiftKey } from '@/lib/program';
+import { curReps, fmtDate, remaining, type LiftKey } from '@/lib/program';
 import { colors, fonts } from '@/theme';
 
 export default function TrackerScreen() {
   const { data, now, loadError, actions } = useTracker();
-  const [timerBig, setTimerBig] = useState(false);
   const insets = useSafeAreaInsets();
   const { wide, gutter, type } = useLayout();
 
   const n = data.sessions.length;
   const left = remaining(data, now);
   const running = !!data.timerEnd;
-  const ready = left <= 0;
+  const ready = running && left <= 0;
   const reps = curReps(data);
-  const ns = nextSet(data);
 
   // Buzz once when a running rest period hits zero.
   const wasReady = useRef(ready);
@@ -34,18 +32,10 @@ export default function TrackerScreen() {
     wasReady.current = ready;
   }, [ready]);
 
-  const toggleTimer = () => {
-    if (!data.timerEnd) setTimerBig(true);
-    actions.toggleTimer();
-  };
-  const resetTimer = () => {
-    setTimerBig(false);
-    actions.resetTimer();
-  };
-  // Only toggles the set; the rest timer is started from its Start button.
-  const onTapSet = (k: LiftKey, i: number) => {
+  // Only counts the set; the rest timer is started from its own button.
+  const onCount = (k: LiftKey, delta: 1 | -1) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-    actions.tapSet(k, i);
+    actions.countSet(k, delta);
   };
   const confirmReset = () =>
     Alert.alert('Reset all data?', 'This erases every logged session and resets all weights. It cannot be undone.', [
@@ -56,6 +46,11 @@ export default function TrackerScreen() {
   return (
     // Insets pad the outer view (not the scroll content) so nothing scrolls under the status or navigation bar.
     <View style={[s.root, { paddingTop: insets.top, paddingBottom: insets.bottom, paddingLeft: insets.left, paddingRight: insets.right }]}>
+      <View style={[s.timerWrap, { paddingHorizontal: gutter }]}>
+        <View style={s.timerInner}>
+          <RestTimerBar left={left} running={running} onToggle={actions.toggleTimer} onReset={actions.resetTimer} />
+        </View>
+      </View>
       <ScrollView
         contentContainerStyle={[s.content, { paddingHorizontal: gutter, paddingTop: 24, paddingBottom: 48 }]}
         keyboardShouldPersistTaps="handled">
@@ -64,7 +59,7 @@ export default function TrackerScreen() {
           <Text style={s.headerLine}>
             {n
               ? `${n} session${n > 1 ? 's' : ''} logged · last on ${fmtDate(data.sessions[n - 1].date)}`
-              : 'No sessions yet. Start with Workout A.'}
+              : 'No sessions yet. Tap a lift after each set.'}
           </Text>
           {loadError && (
             <Text style={s.error}>
@@ -75,22 +70,7 @@ export default function TrackerScreen() {
 
         <View style={[s.split, wide && s.splitWide]}>
           <View style={wide ? s.main : undefined}>
-            <WorkoutCard
-              data={data}
-              reps={reps}
-              other={other(data.next)}
-              rest={{
-                bg: ready ? colors.go : colors.dark,
-                label: ready ? 'GO · NEXT SET' : running ? 'RESTING' : 'REST TIMER',
-                time: mmss(left),
-                action: running ? 'Open' : ready || left === REST ? 'Start' : 'Resume',
-              }}
-              onTapSet={onTapSet}
-              onTimerPress={() => (data.timerEnd ? setTimerBig(true) : toggleTimer())}
-              onTimerReset={resetTimer}
-              onFinish={actions.finish}
-              onSwitch={actions.switchWorkout}
-            />
+            <WorkoutCard data={data} reps={reps} onCount={onCount} onFinish={actions.finish} />
           </View>
           <View style={wide ? s.side : undefined}>
             <WeightTiles data={data} onSetWeight={actions.setWeight} />
@@ -109,26 +89,14 @@ export default function TrackerScreen() {
         </View>
       </ScrollView>
 
-      <RestTimerOverlay
-        visible={timerBig}
-        bg={ready ? colors.go : colors.dark}
-        label={ready ? 'GO' : running ? 'REST' : 'PAUSED'}
-        time={mmss(left)}
-        upNext={ns ? `Next: ${LIFTS[ns.k].name} set ${ns.i + 1} · ${fmtW(data.lifts[ns.k].w)} lb` : 'All sets done. Finish the workout.'}
-        hasNextSet={!!ns}
-        action={running ? 'Pause' : ready ? 'Restart' : 'Resume'}
-        onHide={() => setTimerBig(false)}
-        onSetDone={() => ns && onTapSet(ns.k, ns.i)}
-        onToggle={toggleTimer}
-        onAddTime={actions.addTime}
-        onReset={resetTimer}
-      />
     </View>
   );
 }
 
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
+  timerWrap: { paddingTop: 12, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: colors.line, backgroundColor: colors.bg },
+  timerInner: { width: '100%', maxWidth: 1120, alignSelf: 'center' },
   content: { gap: 24, width: '100%', maxWidth: 1120, alignSelf: 'center' },
   header: { borderBottomWidth: 3, borderBottomColor: colors.ink, paddingBottom: 16, gap: 8 },
   h1: { fontFamily: fonts.black, letterSpacing: -1.9, color: colors.ink },

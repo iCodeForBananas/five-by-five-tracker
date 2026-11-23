@@ -2,8 +2,9 @@
 
 A no-nonsense tracker for the classic 5×5 strength program, built with Expo (React Native + TypeScript) for iOS and Android.
 
-- **Workouts A / B**: A = Squat, Bench, Row (5×5). B = Squat, Overhead Press (5×5), Deadlift (1×5). They alternate automatically.
-- **Tap-to-log sets**: tapping a set just checks it off (tap again to uncheck). The 2:00 rest timer is manual: press Start on the timer card to open it full screen with Set done, Pause, +30s, and Reset. The screen stays awake while it's open.
+- **Any lift, any day**: all five lifts (Squat, Bench, Row, Overhead Press, Deadlift) are always listed, each with what you did last time (weight, reps, date). Nothing forces Workout A or B; finishing logs only the lifts you counted sets for.
+- **Tap-to-count sets**: tap a lift's counter each time you finish a set (− takes one back). It stops at the lift's set count.
+- **Rest timer pinned at the top**: tap it to start a 2:00 countdown; while running it shows Pause and Reset. The screen stays awake while it runs.
 - **Automatic progression**: hit every rep and the weight goes up 5 lb (10 lb on deadlift). Miss and you repeat the weight. Three misses in a row deloads 10%.
 - **Working weights**: edit them inline (±5 lb or type a value), with a plate breakdown per side for a 45 lb bar.
 - **Progress chart**: per-lift lines with solid dots (all reps hit) and hollow dots (missed reps). Tap a chip to show or hide a lift.
@@ -16,8 +17,8 @@ All data stays on the device (AsyncStorage). There are no accounts, no network c
 ```
 src/
   app/            expo-router routes (_layout.tsx = fonts/splash/repository provider, index.tsx = tracker screen)
-  components/     WorkoutCard, RestTimerOverlay, WeightTiles, ProgressChart, HistoryList, ProgramRules
-  hooks/          useTracker: app state + intent-level actions (finish, undo, tapSet, …) + timer clock
+  components/     WorkoutCard, RestTimerBar, WeightTiles, ProgressChart, HistoryList, ProgramRules
+  hooks/          useTracker: app state + intent-level actions (finish, undo, countSet, …) + timer clock
   lib/program.ts  program rules and pure state transitions, with no storage or React code
   services/       persistence layer (see below)
   theme.ts        colors and font families
@@ -31,10 +32,10 @@ The UI never touches storage. Screens call `useTracker()` actions; each action a
 | Method | Called when |
 |---|---|
 | `load()` | app start (runs schema migrations) |
-| `saveProgram({ lifts, next })` | weight edited, workout switched |
-| `saveDraft(reps)` | a set is checked or unchecked |
+| `saveProgram({ lifts, next })` | weight edited (`next` is the legacy A/B pointer, kept for compatibility) |
+| `saveDraft(reps)` | a set is counted or taken back |
 | `savePreferences({ hidden })` | a chart line is toggled |
-| `saveTimer({ timerEnd, timerLeft })` | the rest timer starts, pauses, resets, or gets +30s |
+| `saveTimer({ timerEnd, timerLeft })` | the rest timer starts, pauses, or resets |
 | `recordSession(session, program)` | a workout is finished (one atomic write) |
 | `removeSession(id, program)` | "Undo last session" |
 | `clear()` | "Reset all data" |
