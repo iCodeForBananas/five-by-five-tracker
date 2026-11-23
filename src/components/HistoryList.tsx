@@ -4,9 +4,9 @@ import { fmtDate, fmtW, LIFTS, type Session } from '@/lib/program';
 import { useLayout } from '@/hooks/useLayout';
 import { colors, fonts } from '@/theme';
 
-type Props = { sessions: Session[]; onUndo: () => void };
+type Props = { sessions: Session[]; onUndo: () => void; onReset: () => void };
 
-export function HistoryList({ sessions, onUndo }: Props) {
+export function HistoryList({ sessions, onUndo, onReset }: Props) {
   const recent = sessions.slice().reverse().slice(0, 30);
   const { compact, cardPad, type } = useLayout();
   return (
@@ -42,6 +42,12 @@ export function HistoryList({ sessions, onUndo }: Props) {
           </View>
         </View>
       ))}
+      <View style={s.foot}>
+        <Text style={s.muted}>Saved on this device.</Text>
+        <Pressable onPress={onReset} style={s.reset} accessibilityRole="button">
+          <Text style={s.resetText}>Reset all data</Text>
+        </Pressable>
+      </View>
     </View>
   );
 }
@@ -69,4 +75,7 @@ const s = StyleSheet.create({
   mono: { fontFamily: fonts.monoBold, fontSize: 14, color: colors.ink },
   monoMuted: { fontFamily: fonts.mono, color: colors.muted },
   note: { fontFamily: fonts.semibold, fontSize: 14 },
+  foot: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginTop: 8, paddingTop: 12, borderTopWidth: 1, borderTopColor: colors.line },
+  reset: { minHeight: 44, justifyContent: 'center' },
+  resetText: { fontFamily: fonts.regular, fontSize: 13, color: colors.muted, textDecorationLine: 'underline' },
 });

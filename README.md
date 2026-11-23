@@ -8,9 +8,9 @@ A no-nonsense tracker for the classic 5×5 strength program, built with Expo (Re
 - **Tap-to-count sets**: tap a lift's counter each time you finish a set (− takes one back). It stops at the lift's set count.
 - **Rest timer pinned at the top**: tap it to start a 2:00 countdown; while running it shows Pause and Reset. The screen stays awake while it runs.
 - **Automatic progression**: hit every rep and the weight goes up 5 lb (10 lb on deadlift). Miss and you repeat the weight. Three misses in a row deloads 10%.
-- **Working weights**: edit them inline (±5 lb or type a value), with a plate breakdown per side for a 45 lb bar.
+- **Working weights**: tap a lift's weight to type a new one; each lift shows the plates per side for a 45 lb bar.
 - **Progress chart**: per-lift lines with solid dots (all reps hit) and hollow dots (missed reps). Tap a chip to show or hide a lift.
-- **History** with undo of the last session, plus a reset-all option.
+- **History** with undo of the last session, plus a reset-all link at the bottom.
 
 All data stays on the device (AsyncStorage; in a browser that's local storage). There are no accounts, no network calls, and no runtime permissions.
 
@@ -33,7 +33,7 @@ All data stays on the device (AsyncStorage; in a browser that's local storage). 
 ```
 src/
   app/            expo-router routes (_layout.tsx = fonts/splash/repository provider, index.tsx = tracker screen)
-  components/     WorkoutCard, RestTimerBar, WeightTiles, ProgressChart, HistoryList, ProgramRules
+  components/     WorkoutCard, RestTimerBar, ProgressChart, HistoryList
   hooks/          useTracker: app state + intent-level actions (finish, undo, countSet, …) + timer clock
   lib/program.ts  program rules and pure state transitions, with no storage or React code
   services/       persistence layer (see below)

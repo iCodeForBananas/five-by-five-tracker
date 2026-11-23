@@ -4,10 +4,8 @@ import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { HistoryList } from '@/components/HistoryList';
-import { ProgramRules } from '@/components/ProgramRules';
 import { ProgressChart } from '@/components/ProgressChart';
 import { RestTimerBar } from '@/components/RestTimerBar';
-import { WeightTiles } from '@/components/WeightTiles';
 import { WorkoutCard } from '@/components/WorkoutCard';
 import { useLayout } from '@/hooks/useLayout';
 import { useTracker } from '@/hooks/useTracker';
@@ -17,7 +15,7 @@ import { colors, fonts } from '@/theme';
 export default function TrackerScreen() {
   const { data, now, loadError, actions } = useTracker();
   const insets = useSafeAreaInsets();
-  const { wide, gutter, type } = useLayout();
+  const { gutter, type } = useLayout();
 
   const n = data.sessions.length;
   const left = remaining(data, now);
@@ -68,25 +66,11 @@ export default function TrackerScreen() {
           )}
         </View>
 
-        <View style={[s.split, wide && s.splitWide]}>
-          <View style={wide ? s.main : undefined}>
-            <WorkoutCard data={data} reps={reps} onCount={onCount} onFinish={actions.finish} />
-          </View>
-          <View style={wide ? s.side : undefined}>
-            <WeightTiles data={data} onSetWeight={actions.setWeight} />
-          </View>
-        </View>
+        <WorkoutCard data={data} reps={reps} onCount={onCount} onSetWeight={actions.setWeight} onFinish={actions.finish} />
 
         <ProgressChart data={data} onToggle={actions.toggleLift} />
 
-        <View style={[s.split, wide && s.splitWide]}>
-          <View style={wide ? s.main : undefined}>
-            <HistoryList sessions={data.sessions} onUndo={actions.undo} />
-          </View>
-          <View style={wide ? s.side : undefined}>
-            <ProgramRules onReset={confirmReset} />
-          </View>
-        </View>
+        <HistoryList sessions={data.sessions} onUndo={actions.undo} onReset={confirmReset} />
       </ScrollView>
 
     </View>
@@ -96,14 +80,10 @@ export default function TrackerScreen() {
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   timerWrap: { paddingTop: 12, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: colors.line, backgroundColor: colors.bg },
-  timerInner: { width: '100%', maxWidth: 1120, alignSelf: 'center' },
-  content: { gap: 24, width: '100%', maxWidth: 1120, alignSelf: 'center' },
+  timerInner: { width: '100%', maxWidth: 760, alignSelf: 'center' },
+  content: { gap: 24, width: '100%', maxWidth: 760, alignSelf: 'center' },
   header: { borderBottomWidth: 3, borderBottomColor: colors.ink, paddingBottom: 16, gap: 8 },
   h1: { fontFamily: fonts.black, letterSpacing: -1.9, color: colors.ink },
   headerLine: { fontFamily: fonts.regular, fontSize: 15, color: colors.muted },
   error: { fontFamily: fonts.semibold, fontSize: 14, color: colors.accent },
-  split: { gap: 24 },
-  splitWide: { flexDirection: 'row', alignItems: 'flex-start' },
-  main: { flex: 3, minWidth: 0 },
-  side: { flex: 2, minWidth: 0 },
 });

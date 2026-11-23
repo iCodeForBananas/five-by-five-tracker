@@ -1,4 +1,5 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useState } from 'react';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { fmtDate, fmtW, KEYS, LIFTS, lastDone, plates, setCount, type LiftKey, type TrackerData } from '@/lib/program';
 import { useLayout } from '@/hooks/useLayout';
@@ -9,11 +10,12 @@ type Props = {
   data: TrackerData;
   reps: Record<LiftKey, (number | null)[]>;
   onCount: (k: LiftKey, delta: 1 | -1) => void;
+  onSetWeight: (k: LiftKey, w: number) => void;
   onFinish: () => void;
 };
 
 /** Every lift, what you did last time, and a tap counter for today's sets. Do any lifts in any order. */
-export function WorkoutCard({ data, reps, onCount, onFinish }: Props) {
+export function WorkoutCard({ data, reps, onCount, onSetWeight, onFinish }: Props) {
   const { cardPad, type } = useLayout();
   const touched = KEYS.filter((k) => setCount(reps[k]) > 0).length;
   return (
@@ -38,9 +40,10 @@ export function WorkoutCard({ data, reps, onCount, onFinish }: Props) {
                 <View style={[s.dot, { backgroundColor: L.color }]} />
                 <Text style={s.exName}>{L.name}</Text>
               </View>
-              <Text style={[s.weight, { fontSize: type(26) }]}>
-                {fmtW(w)} <Text style={s.scheme}>lb · {L.sets}×5</Text>
-              </Text>
+              <View style={s.weightRow}>
+                <WeightInput name={L.name} w={w} size={type(26)} onSet={(v) => onSetWeight(k, v)} />
+                <Text style={s.scheme}>lb · {L.sets}×5</Text>
+              </View>
               <Text style={s.last}>
                 {last
                   ? `Last: ${fmtW(last.w)} lb · ${last.reps.join('/')} · ${fmtDate(last.date)}`
@@ -86,6 +89,33 @@ export function WorkoutCard({ data, reps, onCount, onFinish }: Props) {
   );
 }
 
+/** The working weight, edited in place: tap it, type a number, done. */
+function WeightInput({ name, w, size, onSet }: { name: string; w: number; size: number; onSet: (w: number) => void }) {
+  // Text being typed; null when not editing so the field shows the stored weight.
+  const [draft, setDraft] = useState<string | null>(null);
+  const commit = () => {
+    if (draft == null) return;
+    const v = Number(draft);
+    if (draft.trim() !== '' && Number.isFinite(v) && v >= 0) onSet(v);
+    setDraft(null);
+  };
+  return (
+    <TextInput
+      value={draft ?? fmtW(w)}
+      onChangeText={setDraft}
+      onFocus={() => setDraft(fmtW(w))}
+      onEndEditing={commit}
+      onSubmitEditing={commit}
+      onBlur={commit}
+      keyboardType="decimal-pad"
+      returnKeyType="done"
+      selectTextOnFocus
+      accessibilityLabel={`${name} working weight in pounds`}
+      style={[s.weightInput, { fontSize: size, width: size * 2.6 }]}
+    />
+  );
+}
+
 const s = StyleSheet.create({
   card: { backgroundColor: colors.card, borderRadius: 16, gap: 20 },
   eyebrow: { fontFamily: fonts.monoBold, fontSize: 12, letterSpacing: 1.4, color: colors.accent },
@@ -96,7 +126,8 @@ const s = StyleSheet.create({
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   dot: { width: 10, height: 10, borderRadius: 5 },
   exName: { fontFamily: fonts.bold, fontSize: 20, color: colors.ink },
-  weight: { fontFamily: fonts.monoBold, color: colors.ink, marginTop: 6 },
+  weightRow: { flexDirection: 'row', alignItems: 'baseline', gap: 6, marginTop: 6 },
+  weightInput: { fontFamily: fonts.monoBold, color: colors.ink, padding: 0, borderBottomWidth: 2, borderStyle: 'dashed', borderBottomColor: colors.lineStrong },
   scheme: { fontFamily: fonts.mono, fontSize: 14, color: colors.muted },
   last: { fontFamily: fonts.semibold, fontSize: 14, color: colors.ink, marginTop: 4 },
   small: { fontFamily: fonts.regular, fontSize: 13, color: colors.muted, marginTop: 2 },
