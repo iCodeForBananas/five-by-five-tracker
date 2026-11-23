@@ -1,0 +1,32 @@
+<!doctype html>
+<!-- Source for marquee.png (1400x560). app.png is a 2x phone screenshot of the web build.
+     Re-render with headless Chrome:
+     chrome --headless=new --hide-scrollbars --force-device-scale-factor=1
+            --window-size=1400,560 --screenshot=marquee.png marquee.html -->
+<html><head><meta charset="utf-8"><style>
+  * { box-sizing: border-box; margin: 0; }
+  body { width: 1400px; height: 560px; overflow: hidden; position: relative; color: #F2F1EC;
+    font-family: "Segoe UI", system-ui, sans-serif;
+    background: radial-gradient(ellipse at 80% 55%, rgb(181 61 10 / 0.22), transparent 55%), #16181B; }
+  .wrap { display: flex; align-items: center; height: 100%; padding: 0 110px; gap: 90px; }
+  .brand { flex: 1; display: flex; flex-direction: column; gap: 28px; }
+  .row { display: flex; align-items: center; gap: 28px; }
+  .row img { width: 120px; height: 120px; border-radius: 28px; box-shadow: 0 0 0 2px #ffffff22, 0 12px 40px #0008; }
+  h1 { font-size: 64px; font-weight: 800; letter-spacing: -1px; }
+  p { font-size: 28px; line-height: 1.35; color: #B9BBC0; max-width: 660px; }
+  p b { color: #F6A77F; font-weight: 700; }
+  .chips { display: flex; flex-wrap: wrap; gap: 10px; }
+  .chips span { font-size: 18px; font-weight: 600; padding: 7px 14px; border-radius: 999px; background: #ffffff10; border: 1px solid #ffffff22; }
+  .chips span.a { background: #B53D0A; color: #fff; border-color: #B53D0A; }
+  .phone { flex: 0 0 248px; padding: 10px; border-radius: 36px; background: #24272c; box-shadow: 0 0 0 2px #34373d, 0 30px 70px #000a; transform: rotate(2deg); }
+  .phone img { display: block; width: 100%; border-radius: 28px; }
+</style></head><body>
+  <div class="wrap">
+    <div class="brand">
+      <div class="row"><img src="../../assets/icon.png"><h1>5×5 Tracker</h1></div>
+      <p>Tap a set, rest two minutes, repeat. Weekly rep bars show <b>which lift to do next</b>.</p>
+      <div class="chips"><span class="a">iPhone · iPad · Android · Web</span><span>Free · Open source · No accounts</span></div>
+    </div>
+    <div class="phone"><img src="app.png"></div>
+  </div>
+</body></html>

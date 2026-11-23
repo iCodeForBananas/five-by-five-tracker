@@ -66,7 +66,7 @@ export default function TrackerScreen() {
           )}
         </View>
 
-        <WorkoutCard data={data} reps={reps} onCount={onCount} onSetWeight={actions.setWeight} onFinish={actions.finish} />
+        <WorkoutCard data={data} reps={reps} now={now} onCount={onCount} onSetWeight={actions.setWeight} onFinish={actions.finish} />
 
         <ProgressChart data={data} onToggle={actions.toggleLift} />
 

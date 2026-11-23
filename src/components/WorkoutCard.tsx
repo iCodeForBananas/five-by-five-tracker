@@ -1,7 +1,20 @@
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
-import { fmtDate, fmtW, KEYS, LIFTS, lastDone, plates, setCount, type LiftKey, type TrackerData } from '@/lib/program';
+import {
+  fmtDate,
+  fmtW,
+  KEYS,
+  LIFTS,
+  lastDone,
+  mostBehind,
+  plates,
+  setCount,
+  weeklyReps,
+  weeklyTarget,
+  type LiftKey,
+  type TrackerData,
+} from '@/lib/program';
 import { useLayout } from '@/hooks/useLayout';
 import { colors, fonts } from '@/theme';
 import { Check } from './Check';
@@ -9,21 +22,26 @@ import { Check } from './Check';
 type Props = {
   data: TrackerData;
   reps: Record<LiftKey, (number | null)[]>;
+  now: number;
   onCount: (k: LiftKey, delta: 1 | -1) => void;
   onSetWeight: (k: LiftKey, w: number) => void;
   onFinish: () => void;
 };
 
-/** Every lift, what you did last time, and a tap counter for today's sets. Do any lifts in any order. */
-export function WorkoutCard({ data, reps, onCount, onSetWeight, onFinish }: Props) {
+/**
+ * Every lift with its reps in the last 7 days against a weekly target, what you did last time,
+ * and a tap counter for today's sets. The lift furthest behind is flagged; do any lifts in any order.
+ */
+export function WorkoutCard({ data, reps, now, onCount, onSetWeight, onFinish }: Props) {
   const { cardPad, type } = useLayout();
   const touched = KEYS.filter((k) => setCount(reps[k]) > 0).length;
+  const next = mostBehind(data, now);
   return (
     <View style={[s.card, { padding: cardPad }]} accessibilityLabel="Today's workout">
       <View>
         <Text style={s.eyebrow}>TODAY</Text>
         <Text style={[s.title, { fontSize: type(36) }]}>Lifts</Text>
-        <Text style={s.sub}>Tap a lift each time you finish a set.</Text>
+        <Text style={s.sub}>Bars show reps in the last 7 days. Tap a lift each time you finish a set.</Text>
       </View>
 
       {KEYS.map((k) => {
@@ -33,45 +51,64 @@ export function WorkoutCard({ data, reps, onCount, onSetWeight, onFinish }: Prop
         const last = lastDone(data, k);
         const n = setCount(reps[k]);
         const full = n >= L.sets;
+        const done = weeklyReps(data, k, now);
+        const target = weeklyTarget(k);
+        const pct = Math.min(1, done / target);
+        const isNext = k === next;
         return (
-          <View key={k} style={s.ex}>
-            <View style={s.exInfo}>
-              <View style={s.nameRow}>
-                <View style={[s.dot, { backgroundColor: L.color }]} />
-                <Text style={s.exName}>{L.name}</Text>
+          <View key={k} style={s.lift}>
+            <View style={s.ex}>
+              <View style={s.exInfo}>
+                <View style={s.nameRow}>
+                  <View style={[s.dot, { backgroundColor: L.color }]} />
+                  <Text style={s.exName}>{L.name}</Text>
+                  {isNext && (
+                    <View style={s.badge}>
+                      <Text style={s.badgeText}>DO NEXT</Text>
+                    </View>
+                  )}
+                </View>
+                <View style={s.weightRow}>
+                  <WeightInput name={L.name} w={w} size={type(26)} onSet={(v) => onSetWeight(k, v)} />
+                  <Text style={s.scheme}>lb · {L.sets}×5</Text>
+                </View>
+                <Text style={s.last}>
+                  {last
+                    ? `Last: ${fmtW(last.w)} lb · ${last.reps.join('/')} · ${fmtDate(last.date)}`
+                    : 'Last: not done yet'}
+                </Text>
+                <Text style={s.small}>{plates(w)}</Text>
+                {f > 0 && <Text style={s.fail}>Missed {f} of 3 in a row at this weight</Text>}
               </View>
-              <View style={s.weightRow}>
-                <WeightInput name={L.name} w={w} size={type(26)} onSet={(v) => onSetWeight(k, v)} />
-                <Text style={s.scheme}>lb · {L.sets}×5</Text>
-              </View>
-              <Text style={s.last}>
-                {last
-                  ? `Last: ${fmtW(last.w)} lb · ${last.reps.join('/')} · ${fmtDate(last.date)}`
-                  : 'Last: not done yet'}
-              </Text>
-              <Text style={s.small}>{plates(w)}</Text>
-              {f > 0 && <Text style={s.fail}>Missed {f} of 3 in a row at this weight</Text>}
-            </View>
-            <View style={s.counter}>
-              {n > 0 && (
-                <Pressable onPress={() => onCount(k, -1)} style={s.minus} accessibilityRole="button" accessibilityLabel={`Take back a ${L.name} set`}>
-                  <Text style={s.minusText}>−</Text>
-                </Pressable>
-              )}
-              <Pressable
-                onPress={() => onCount(k, 1)}
-                style={[s.tap, full && s.tapFull]}
-                accessibilityRole="button"
-                accessibilityLabel={`${L.name}: ${n} of ${L.sets} sets. Tap to count a set.`}>
-                {full ? (
-                  <Check size={30} color="#FFFFFF" />
-                ) : (
-                  <Text style={s.tapCount}>
-                    {n}
-                    <Text style={s.tapOf}>/{L.sets}</Text>
-                  </Text>
+              <View style={s.counter}>
+                {n > 0 && (
+                  <Pressable onPress={() => onCount(k, -1)} style={s.minus} accessibilityRole="button" accessibilityLabel={`Take back a ${L.name} set`}>
+                    <Text style={s.minusText}>−</Text>
+                  </Pressable>
                 )}
-              </Pressable>
+                <Pressable
+                  onPress={() => onCount(k, 1)}
+                  style={[s.tap, full && s.tapFull]}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${L.name}: ${n} of ${L.sets} sets. Tap to count a set.`}>
+                  {full ? (
+                    <Check size={30} color="#FFFFFF" />
+                  ) : (
+                    <Text style={s.tapCount}>
+                      {n}
+                      <Text style={s.tapOf}>/{L.sets}</Text>
+                    </Text>
+                  )}
+                </Pressable>
+              </View>
+            </View>
+            <View style={s.week} accessibilityLabel={`${L.name}: ${done} of ${target} reps in the last 7 days`}>
+              <View style={s.track}>
+                <View style={[s.fill, { width: `${pct * 100}%`, backgroundColor: pct >= 1 ? colors.go : isNext ? colors.accent : colors.ink }]} />
+              </View>
+              <Text style={[s.weekText, pct >= 1 && { color: colors.go }, isNext && { color: colors.accent }]}>
+                {done}/{target} reps
+              </Text>
             </View>
           </View>
         );
@@ -121,7 +158,14 @@ const s = StyleSheet.create({
   eyebrow: { fontFamily: fonts.monoBold, fontSize: 12, letterSpacing: 1.4, color: colors.accent },
   title: { fontFamily: fonts.black, letterSpacing: -0.8, color: colors.ink, marginTop: 4 },
   sub: { fontFamily: fonts.regular, fontSize: 14, color: colors.muted, marginTop: 4 },
-  ex: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingTop: 20, borderTopWidth: 1, borderTopColor: colors.line },
+  lift: { gap: 12, paddingTop: 20, borderTopWidth: 1, borderTopColor: colors.line },
+  ex: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  badge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, backgroundColor: colors.accent },
+  badgeText: { fontFamily: fonts.monoBold, fontSize: 11, letterSpacing: 1, color: '#FFFFFF' },
+  week: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  track: { flex: 1, height: 10, borderRadius: 5, backgroundColor: colors.grid, overflow: 'hidden' },
+  fill: { height: '100%', borderRadius: 5 },
+  weekText: { fontFamily: fonts.monoBold, fontSize: 13, color: colors.muted, minWidth: 64, textAlign: 'right', fontVariant: ['tabular-nums'] },
   exInfo: { flex: 1, minWidth: 0 },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   dot: { width: 10, height: 10, borderRadius: 5 },

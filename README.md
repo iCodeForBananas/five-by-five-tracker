@@ -1,9 +1,12 @@
 # 5×5 Tracker
 
+[![5×5 Tracker: a phone showing the rest timer above the lift list, with weekly rep bars and Barbell Row flagged Do next](docs/marquee/marquee.png)](https://icodeforbananas.github.io/five-by-five-tracker/)
+
 A no-nonsense tracker for the classic 5×5 strength program, built with Expo (React Native + TypeScript) for **iOS, Android and the web** from one codebase.
 
 **Use it in a browser:** <https://icodeforbananas.github.io/five-by-five-tracker/>
 
+- **Weekly rep targets**: each lift has a progress bar of reps in the last 7 days against a weekly target (the A/B rotation done three times a week: squat 3 sessions, the others 2, so 75 reps for squat, 50 for bench/row/OHP, 10 for deadlift). The lift furthest behind is flagged **Do next**. Targets are `WEEKLY_SESSIONS` in `src/lib/program.ts`.
 - **Any lift, any day**: all five lifts (Squat, Bench, Row, Overhead Press, Deadlift) are always listed, each with what you did last time (weight, reps, date). Nothing forces Workout A or B; finishing logs only the lifts you counted sets for.
 - **Tap-to-count sets**: tap a lift's counter each time you finish a set (− takes one back). It stops at the lift's set count.
 - **Rest timer pinned at the top**: tap it to start a 2:00 countdown; while running it shows Pause and Reset. The screen stays awake while it runs.

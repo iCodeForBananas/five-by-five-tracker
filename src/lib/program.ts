@@ -20,6 +20,14 @@ export const PROGRAM: Record<WorkoutType, LiftKey[]> = {
 };
 
 export const REST = 120;
+
+/**
+ * How many times each lift should come up in a rolling 7 days. The classic program is three
+ * sessions a week alternating A and B: squat every session, the others every other session
+ * (1.5 a week), rounded up so a week that rotates fully always hits the target.
+ */
+export const WEEKLY_SESSIONS: Record<LiftKey, number> = { squat: 3, bench: 2, row: 2, ohp: 2, deadlift: 2 };
+const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 const PLATES = [45, 35, 25, 10, 5, 2.5];
 const BAR = 45;
 
@@ -146,6 +154,37 @@ export function lastDone(d: TrackerData, k: LiftKey): (SessionEntry & { date: st
     if (e) return { ...e, date: d.sessions[i].date };
   }
   return null;
+}
+
+/** Reps a lift should get in a rolling 7 days: sessions × sets × 5. */
+export function weeklyTarget(k: LiftKey): number {
+  return WEEKLY_SESSIONS[k] * LIFTS[k].sets * 5;
+}
+
+/** Reps logged for a lift in the last 7 days, plus sets counted in the workout in progress. */
+export function weeklyReps(d: TrackerData, k: LiftKey, now: number): number {
+  const since = now - WEEK_MS;
+  let n = 0;
+  for (const s of d.sessions) {
+    if (Date.parse(s.date) <= since) continue;
+    for (const e of s.entries) if (e.k === k) n += e.reps.reduce((a, b) => a + num(b), 0);
+  }
+  for (const v of curReps(d)[k]) if (v != null) n += v;
+  return n;
+}
+
+/** The lift furthest behind its weekly target (lowest share done), or null when all are on target. */
+export function mostBehind(d: TrackerData, now: number): LiftKey | null {
+  let best: LiftKey | null = null;
+  let bestPct = 1;
+  for (const k of KEYS) {
+    const pct = weeklyReps(d, k, now) / weeklyTarget(k);
+    if (pct < bestPct) {
+      best = k;
+      bestPct = pct;
+    }
+  }
+  return best;
 }
 
 export function remaining(d: TrackerData, now: number): number {
