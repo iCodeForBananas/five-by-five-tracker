@@ -1,6 +1,8 @@
 # 5×5 Tracker
 
-A no-nonsense tracker for the classic 5×5 strength program, built with Expo (React Native + TypeScript) for iOS and Android.
+A no-nonsense tracker for the classic 5×5 strength program, built with Expo (React Native + TypeScript) for **iOS, Android and the web** from one codebase.
+
+**Use it in a browser:** <https://icodeforbananas.github.io/five-by-five-tracker/>
 
 - **Any lift, any day**: all five lifts (Squat, Bench, Row, Overhead Press, Deadlift) are always listed, each with what you did last time (weight, reps, date). Nothing forces Workout A or B; finishing logs only the lifts you counted sets for.
 - **Tap-to-count sets**: tap a lift's counter each time you finish a set (− takes one back). It stops at the lift's set count.
@@ -10,7 +12,21 @@ A no-nonsense tracker for the classic 5×5 strength program, built with Expo (Re
 - **Progress chart**: per-lift lines with solid dots (all reps hit) and hollow dots (missed reps). Tap a chip to show or hide a lift.
 - **History** with undo of the last session, plus a reset-all option.
 
-All data stays on the device (AsyncStorage). There are no accounts, no network calls, and no runtime permissions.
+All data stays on the device (AsyncStorage; in a browser that's local storage). There are no accounts, no network calls, and no runtime permissions.
+
+## Download
+
+| Platform | How |
+|---|---|
+| Web | <https://icodeforbananas.github.io/five-by-five-tracker/> (rebuilt on every push to `main`) |
+| Android | The `.apk` on the [latest release](../../releases/latest), or the `FiveByFive-android` artifact of the latest [CI run](../../actions/workflows/ci.yml) |
+| iOS | Sideload the unsigned `.ipa` from the latest [CI run](../../actions/workflows/ci.yml), or build through EAS (below) |
+
+## CI and releases
+
+- **CI** (`.github/workflows/ci.yml`), on every push and pull request: typecheck, lint, web export, then an Android APK and an unsigned iOS `.ipa`, both attached to the run.
+- **Pages** (`pages.yml`), on every push to `main`: publishes the web export to GitHub Pages. `app.config.ts` sets the web base path from `EXPO_BASE_URL` so the site works under `/five-by-five-tracker/`; local dev is unaffected.
+- **Release** (`release.yml`), on a `v*` tag (`git tag v1.1.0 && git push origin v1.1.0`): builds the APK and attaches it to a GitHub release.
 
 ## Project layout
 
@@ -64,6 +80,8 @@ Requirements: Node **22.13+** (Expo SDK 58), npm, and an [Expo account](https://
 ```bash
 npm install
 npm start            # Expo dev server
+npm run web          # run it in a browser
+npm run build:web    # static web export to dist/
 npm run typecheck    # tsc --noEmit
 npm run lint         # expo lint
 npm run doctor       # expo-doctor
@@ -135,4 +153,4 @@ ANDROID_HOME="$LOCALAPPDATA/Android/Sdk" ./gradlew assembleRelease -PreactNative
 
 - The rest timer counts down from a stored end timestamp, so it stays accurate if the app is backgrounded. It doesn't post a notification when time is up, which keeps the app permission-free. Adding `expo-notifications` would make that possible.
 - `ios/` and `android/` are generated (Continuous Native Generation) and git-ignored. Configure native behavior through `app.json`, not by editing those folders.
-- No license file is included, so the code is all rights reserved by default.
+- MIT licensed; see `LICENSE`.
