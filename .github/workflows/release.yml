@@ -21,11 +21,11 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - uses: actions/setup-java@v4
+      # No Gradle cache: android/ doesn't exist until prebuild, so there's nothing to key it on.
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: 17
-          cache: gradle
       - run: npm ci && npm run typecheck && npx expo prebuild --platform android --no-install
       - name: Build APK
         working-directory: android
